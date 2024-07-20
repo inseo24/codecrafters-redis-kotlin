@@ -10,22 +10,8 @@ fun main(args: Array<String>) {
 
     // syntax: PING [message]
     serverSocket.accept().use { socket ->
-        val input = socket.getInputStream().bufferedReader()
-        val output = DataOutputStream(socket.getOutputStream())
-
-        while (true) {
-            val request = input.readLine() ?: break
-
-            val response = when {
-                request.startsWith("PING") -> {
-                    val message = request.substringAfter("PING").trim()
-                    "PONG $message"
-                }
-                else -> "ERROR unknown command"
-            }
-
-            output.writeBytes("$response\n")
-            output.flush()
+            DataOutputStream(socket.getOutputStream()).use { out ->
+                out.write("+PONG\r\n".toByteArray())
         }
     }
     println("accepted new connection")
