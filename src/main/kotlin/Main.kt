@@ -1,18 +1,52 @@
-import java.io.DataOutputStream
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.net.ServerSocket
 
-fun main(args: Array<String>) {
+fun main() {
     val serverSocket = ServerSocket(6379)
-
-    // Since the tester restarts your program quite often, setting SO_REUSEADDR
-    // ensures that we don't run into 'Address already in use' errors
     serverSocket.reuseAddress = true
 
-    // syntax: PING [message]
-    serverSocket.accept().use { socket ->
-            DataOutputStream(socket.getOutputStream()).use { out ->
-                out.write("+PONG\r\n".toByteArray())
+    println("Server is running on port 6379")
+
+    while (true) {
+        serverSocket.accept().use { socket ->
+            println("New client connected")
+
+            val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+            val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream()))
+
+            while (true) {
+                val command = readCommand(reader)
+                when {
+                    command == "PING" -> {
+                        writer.write("+PONG\r\n")
+                    }
+                    command.startsWith("PING ") -> {
+                        val message = command.substring(5)
+                        writer.write("$${message.length}\r\n$message\r\n")
+                    }
+                    command == "QUIT" -> {
+                        println("Client disconnected")
+                        break
+                    }
+                    else -> {
+                        writer.write("-ERR unknown command\r\n")
+                    }
+                }
+                writer.flush()
+            }
         }
     }
-    println("accepted new connection")
+}
+
+fun readCommand(reader: BufferedReader): String {
+    val line = reader.readLine() ?: return ""
+    if (line.startsWith("*")) {
+        val count = line.substring(1).toInt()
+        repeat(count * 2 - 1) { reader.readLine() }
+        return reader.readLine() ?: ""
+    }
+    return line
 }
