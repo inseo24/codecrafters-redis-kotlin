@@ -11,6 +11,7 @@ fun main() {
     println("Server is running on port 6379")
 
     while (true) {
+        println("accepted new connection")
         serverSocket.accept().use { socket ->
             println("New client connected")
 
