@@ -23,18 +23,23 @@ suspend fun handleClient(socket: java.net.Socket) = coroutineScope {
 
         while (isActive) {
             val command = withContext(Dispatchers.IO) { readCommand(reader) }
+            if (command.isEmpty()) break
             val response = processCommand(command)
             writer.write(response)
             writer.flush()
         }
     }
+    println("Client disconnected")
 }
 
 fun readCommand(reader: BufferedReader): List<String> {
     val line = reader.readLine() ?: return emptyList()
     return if (line.startsWith("*")) {
         val count = line.substring(1).toInt()
-        (1..count).map { reader.readLine(); reader.readLine() ?: "" }
+        (1..count).mapNotNull {
+            reader.readLine()  // $ line
+            reader.readLine()  // actual argument
+        }
     } else {
         listOf(line)
     }
