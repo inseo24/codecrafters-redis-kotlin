@@ -1,6 +1,9 @@
 import kotlinx.coroutines.*
 import java.io.*
 import java.net.ServerSocket
+import java.util.concurrent.ConcurrentHashMap
+
+val store = ConcurrentHashMap<String, String>()
 
 fun main() = runBlocking {
     val serverSocket = ServerSocket(6379).apply { reuseAddress = true }
@@ -41,9 +44,29 @@ fun processCommand(command: List<String>): String {
     return when (command.firstOrNull()?.uppercase()) {
         "PING" -> simpleStringReply("PONG")
         "ECHO" -> bulkStringReply(command.getOrElse(1) { "" })
+        "SET" -> handleSet(command)
+        "GET" -> handleGet(command)
         null -> errorReply("ERR no command")
         else -> errorReply("ERR unknown command '${command.first()}'")
     }
+}
+
+fun handleSet(command: List<String>): String {
+    if (command.size < 3) {
+        return errorReply("ERR wrong number of arguments for 'set' command")
+    }
+    val key = command[1]
+    val value = command[2]
+    store[key] = value
+    return simpleStringReply("OK")
+}
+
+fun handleGet(command: List<String>): String {
+    if (command.size != 2) {
+        return errorReply("ERR wrong number of arguments for 'get' command")
+    }
+    val key = command[1]
+    return bulkStringReply(store[key] ?: "")
 }
 
 fun simpleStringReply(str: String) = "+$str\r\n"
