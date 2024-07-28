@@ -8,7 +8,7 @@ data class ValueWithExpiry(val value: String, val expiryTime: Instant?)
 val store = ConcurrentHashMap<String, ValueWithExpiry>()
 
 fun main(args: Array<String>) = runBlocking {
-    val port = args.indices.firstOrNull { args[it] == "--port" }?.let { args[it + 1] }?.toIntOrNull() ?: 6379
+    val port = args.indices.firstOrNull { args[it] == "--port" || args[it] == "-p" }?.let { args[it + 1] }?.toIntOrNull() ?: 6379
     val serverSocket = ServerSocket(port).apply { reuseAddress = true }
     println("Server is running on port $port")
 
@@ -54,6 +54,7 @@ fun processCommand(command: List<String>): String {
         "ECHO" -> bulkStringReply(command.getOrElse(1) { "" })
         "SET" -> handleSet(command)
         "GET" -> handleGet(command)
+        "INFO" -> bulkStringReply("role:master")
         null -> errorReply("ERR no command")
         else -> errorReply("ERR unknown command '${command.first()}'")
     }
