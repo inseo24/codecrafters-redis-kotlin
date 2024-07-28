@@ -55,13 +55,23 @@ fun readCommand(reader: BufferedReader): List<String> {
     }
 }
 
+val REPL_ID = (1..40).map { ('a'..'z').random() }.joinToString("")
+const val REPL_OFFSET = 0
+
 fun processCommand(command: List<String>, isReplica: Boolean): String {
     return when (command.firstOrNull()?.uppercase()) {
         "PING" -> simpleStringReply("PONG")
         "ECHO" -> bulkStringReply(command.getOrElse(1) { "" })
         "SET" -> handleSet(command)
         "GET" -> handleGet(command)
-        "INFO" -> bulkStringReply("role:${if (isReplica) "slave" else "master"}")
+        "INFO" -> {
+            val info = buildString {
+                appendLine("master_repl_offset:$REPL_OFFSET")
+                appendLine("master_replid:$REPL_ID")
+                appendLine("role:${if (isReplica) "slave" else "master"}")
+            }
+            bulkStringReply(info)
+        }
         null -> errorReply("ERR no command")
         else -> errorReply("ERR unknown command '${command.first()}'")
     }
