@@ -8,17 +8,24 @@ data class ValueWithExpiry(val value: String, val expiryTime: Instant?)
 val store = ConcurrentHashMap<String, ValueWithExpiry>()
 
 fun main(args: Array<String>) = runBlocking {
-    val port = args.indices.firstOrNull { args[it] == "--port" || args[it] == "-p" }?.let { args[it + 1] }?.toIntOrNull() ?: 6379
+    val portIndex = args.indices.firstOrNull { args[it] == "--port" || args[it] == "-p" }
+    val port = if (portIndex != null && portIndex + 1 < args.size) args[portIndex + 1].toInt() else 6379
+
+    val replicaIndex = args.indexOf("--replicaof")
+    val masterHost = if (replicaIndex != -1 && replicaIndex + 1 < args.size) args[replicaIndex + 1] else null
+    val masterPort = if (replicaIndex != -1 && replicaIndex + 2 < args.size) args[replicaIndex + 2].toIntOrNull() else null
+    val isReplica = (replicaIndex != -1)
+
     val serverSocket = ServerSocket(port).apply { reuseAddress = true }
     println("Server is running on port $port")
 
     while (true) {
         val clientSocket = serverSocket.accept()
-        launch(Dispatchers.IO) { handleClient(clientSocket) }
+        launch(Dispatchers.IO) { handleClient(clientSocket, isReplica) }
     }
 }
 
-suspend fun handleClient(socket: java.net.Socket) = coroutineScope {
+suspend fun handleClient(socket: java.net.Socket, isReplica: Boolean) = coroutineScope {
     println("New client connected")
     socket.use {
         val reader = socket.getInputStream().bufferedReader()
@@ -27,7 +34,7 @@ suspend fun handleClient(socket: java.net.Socket) = coroutineScope {
         while (isActive) {
             val command = withContext(Dispatchers.IO) { readCommand(reader) }
             if (command.isEmpty()) break
-            val response = processCommand(command)
+            val response = processCommand(command, isReplica)
             writer.write(response)
             writer.flush()
         }
@@ -48,13 +55,13 @@ fun readCommand(reader: BufferedReader): List<String> {
     }
 }
 
-fun processCommand(command: List<String>): String {
+fun processCommand(command: List<String>, isReplica: Boolean): String {
     return when (command.firstOrNull()?.uppercase()) {
         "PING" -> simpleStringReply("PONG")
         "ECHO" -> bulkStringReply(command.getOrElse(1) { "" })
         "SET" -> handleSet(command)
         "GET" -> handleGet(command)
-        "INFO" -> bulkStringReply("role:master")
+        "INFO" -> bulkStringReply("role:${if (isReplica) "slave" else "master"}")
         null -> errorReply("ERR no command")
         else -> errorReply("ERR unknown command '${command.first()}'")
     }
