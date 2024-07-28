@@ -7,9 +7,10 @@ import java.util.concurrent.ConcurrentHashMap
 data class ValueWithExpiry(val value: String, val expiryTime: Instant?)
 val store = ConcurrentHashMap<String, ValueWithExpiry>()
 
-fun main() = runBlocking {
-    val serverSocket = ServerSocket(6379).apply { reuseAddress = true }
-    println("Server is running on port 6379")
+fun main(args: Array<String>) = runBlocking {
+    val port = args.indices.firstOrNull { args[it] == "--port" }?.let { args[it + 1] }?.toIntOrNull() ?: 6379
+    val serverSocket = ServerSocket(port).apply { reuseAddress = true }
+    println("Server is running on port $port")
 
     while (true) {
         val clientSocket = serverSocket.accept()
