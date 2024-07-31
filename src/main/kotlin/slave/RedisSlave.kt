@@ -42,6 +42,10 @@ class RedisSlave(private val masterHost: String, private val masterPort: Int, pr
                     writer.flush()
                     val capaResponse = reader.readLine()
                     println("REPLCONF capa psync2 response: $capaResponse")
+
+                    // PSYNC 전송
+                    writer.write(RedisProtocolUtils.replyPsync())
+                    writer.flush()
                 } else {
                     println("Unexpected response to PING: $pingResponse")
                 }

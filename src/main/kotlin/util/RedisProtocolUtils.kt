@@ -9,4 +9,6 @@ object RedisProtocolUtils {
     fun replyReplConfListeningPort(port: Int) = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$${port.toString().length}\r\n$port\r\n"
     fun replyReplConfCapaPsync2() = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"
     fun okReply() = "+OK\r\n"
+    fun replyPsync() = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n"
+    fun replyFullResync(replId: String) = "+FULLRESYNC $replId 0\r\n"
 }
