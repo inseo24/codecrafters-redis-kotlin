@@ -21,15 +21,19 @@ class RedisServer(private val config: Config) {
         "ECHO" to EchoCommand(),
         "GET" to GetCommand(),
         "SET" to SetCommand(),
-        "INFO" to InfoCommand()
+        "INFO" to InfoCommand(),
+        "REPLCONF" to ReplConfCommand()
     )
 
     fun start() = runBlocking {
         val serverJob = scope.launch { runServer() }
+
         if (config.masterHost != null && config.masterPort != null) {
-            val slaveJob = scope.launch { RedisSlave(config.masterHost, config.masterPort).run() }
-            slaveJob.join()
+            val slaveJob = scope.launch {
+                RedisSlave(config.masterHost, config.masterPort, config.port).run()
+            }
         }
+
         serverJob.join()
     }
 
