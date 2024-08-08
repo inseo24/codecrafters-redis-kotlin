@@ -1,5 +1,6 @@
 package slave
 
+import context.RedisContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -10,7 +11,12 @@ import util.RedisProtocolUtils.replyReplConfCapaPsync2
 import util.RedisProtocolUtils.replyReplConfListeningPort
 import java.net.Socket
 
-class RedisSlave(private val masterHost: String, private val masterPort: Int, private val slavePort: Int) {
+class RedisSlave(
+    private val masterHost: String,
+    private val masterPort: Int,
+    private val slavePort: Int,
+    private val context: RedisContext
+) {
     private val scope = CoroutineScope(Dispatchers.IO)
 
     suspend fun run() {
@@ -64,6 +70,8 @@ class RedisSlave(private val masterHost: String, private val masterPort: Int, pr
                         val replId = parts[1]
                         val offset = parts[2]
                         println("Received FULLRESYNC with REPL_ID: $replId and offset: $offset")
+
+                        context.replicas.add(socket)
                     } else {
                         println("Unexpected response to PSYNC: $psyncResponse")
                     }

@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 class RedisServer(private val config: Config) {
     private val scope = CoroutineScope(Dispatchers.Default)
     private val store = ConcurrentHashMap<String, ValueWithExpiry>()
-    private val context = RedisContext(store, config.masterHost != null)
+    private val context = RedisContext(store, true, false)
     private val commands = mapOf(
         "PING" to PingCommand(),
         "ECHO" to EchoCommand(),
@@ -32,7 +32,7 @@ class RedisServer(private val config: Config) {
 
         if (config.masterHost != null && config.masterPort != null) {
             val slaveJob = scope.launch {
-                RedisSlave(config.masterHost, config.masterPort, config.port).run()
+                RedisSlave(config.masterHost, config.masterPort, config.port, context).run()
             }
         }
 
@@ -61,6 +61,10 @@ class RedisServer(private val config: Config) {
                 val response = processCommand(command)
                 writer.write(response)
                 writer.flush()
+
+                if (context.isMaster) {
+                    propagateCommand(command)
+                }
             }
         }
         println("Client disconnected")
@@ -69,6 +73,24 @@ class RedisServer(private val config: Config) {
     private fun processCommand(command: List<String>): String {
         val cmd = commands[command.firstOrNull()?.uppercase()]
         return cmd?.execute(command, context) ?: errorReply("ERR unknown command '${command.first()}'")
+    }
+
+    private fun propagateCommand(command: List<String>) {
+        val respCommand = command.joinToString(
+            separator = "\r\n",
+            prefix = "*${command.size}\r\n",
+            postfix = "\r\n"
+        ) { "\$${it.length}\r\n$it" }
+
+        context.replicas.forEach { replicaSocket ->
+            try {
+                val writer = replicaSocket.getOutputStream().bufferedWriter(StandardCharsets.ISO_8859_1)
+                writer.write(respCommand)
+                writer.flush()
+            } catch (e: Exception) {
+                println("Failed to propagate command to replica: ${e.message}")
+            }
+        }
     }
 
     fun shutdown() {
