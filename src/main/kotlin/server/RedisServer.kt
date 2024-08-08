@@ -22,7 +22,8 @@ class RedisServer(private val config: Config) {
         "GET" to GetCommand(),
         "SET" to SetCommand(),
         "INFO" to InfoCommand(),
-        "REPLCONF" to ReplConfCommand()
+        "REPLCONF" to ReplConfCommand(),
+        "PSYNC" to PSyncCommand(),
     )
 
     fun start() = runBlocking {

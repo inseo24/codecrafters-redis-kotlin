@@ -58,13 +58,12 @@ class RedisSlave(private val masterHost: String, private val masterPort: Int, pr
                     // PSYNC 응답 처리
                     if (psyncResponse.startsWith("+FULLRESYNC")) {
                         val parts = psyncResponse.split(" ")
-                        if (parts.size == 3) {
-                            val replId = parts[1]
-                            val offset = parts[2]
-                            println("Received FULLRESYNC with REPL_ID: $replId and offset: $offset")
-                        } else {
+                        if (parts.size != 3) {
                             println("Unexpected FULLRESYNC response format")
                         }
+                        val replId = parts[1]
+                        val offset = parts[2]
+                        println("Received FULLRESYNC with REPL_ID: $replId and offset: $offset")
                     } else {
                         println("Unexpected response to PSYNC: $psyncResponse")
                     }
