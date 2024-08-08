@@ -10,6 +10,7 @@ import util.CommandReader.readCommand
 import util.RedisProtocolUtils.errorReply
 import java.net.ServerSocket
 import java.net.Socket
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 
 class RedisServer(private val config: Config) {
@@ -52,7 +53,7 @@ class RedisServer(private val config: Config) {
         println("New client connected")
         socket.use {
             val reader = socket.getInputStream().bufferedReader()
-            val writer = socket.getOutputStream().bufferedWriter()
+            val writer = socket.getOutputStream().bufferedWriter(StandardCharsets.ISO_8859_1)
 
             while (isActive) {
                 val command = withContext(Dispatchers.IO) { readCommand(reader) }
